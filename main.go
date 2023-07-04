@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 	"os"
 	localSpike2 "spikeSystem/localSpike"
@@ -13,10 +14,10 @@ import (
 )
 
 var (
-	localSpike localSpike2.LocalSpike
+	localSpike  localSpike2.LocalSpike
 	remoteSpike remoteSpike2.RemoteSpikeKeys
-	redisPool *redis.Pool
-	done chan int
+	redisPool   *redis.Pool
+	done        chan int
 )
 
 //初始化要使用的结构体和redis连接池
@@ -35,9 +36,15 @@ func init() {
 	done <- 1
 }
 
+var (
+	port string
+)
+
 func main() {
+	flag.StringVar(&port, "port", "3001", "this app run port, type number")
+	flag.Parse()
 	http.HandleFunc("/buy/ticket", handleReq)
-	http.ListenAndServe(":3005", nil)
+	http.ListenAndServe(":"+port, nil)
 }
 
 //处理请求函数,根据请求将响应结果信息写入日志
@@ -47,7 +54,7 @@ func handleReq(w http.ResponseWriter, r *http.Request) {
 	<-done
 	//全局读写锁
 	if localSpike.LocalDeductionStock() && remoteSpike.RemoteDeductionStock(redisConn) {
-		util.RespJson(w, 1,  "抢票成功", nil)
+		util.RespJson(w, 1, "抢票成功", nil)
 		LogMsg = LogMsg + "result:1,localSales:" + strconv.FormatInt(localSpike.LocalSalesVolume, 10)
 	} else {
 		util.RespJson(w, -1, "已售罄", nil)
